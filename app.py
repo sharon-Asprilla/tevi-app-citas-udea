@@ -273,58 +273,73 @@ def ver_perfiles(usuario_id):
 
 # ------------------ CHAT ------------------
 def chat(usuario_id):
-    # Estado para controlar qué chat está abierto
-    if "active_chat" not in st.session_state:
-        st.session_state.active_chat = None
+    st.title("💬 Chat")
 
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
     
     # JOIN para obtener el correo/nombre del otro usuario
-    c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, u1.foto, u2.foto 
-                 FROM matches m
-                 JOIN usuarios u1 ON m.usuario1_id=u1.id
-                 JOIN usuarios u2 ON m.usuario2_id=u2.id
-                 WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
+    # Usamos try-except para evitar errores si las columnas de fotos no están perfectamente sincronizadas
+    try:
+        c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, u1.foto, u2.foto 
+                    FROM matches m
+                    JOIN usuarios u1 ON m.usuario1_id=u1.id
+                    JOIN usuarios u2 ON m.usuario2_id=u2.id
+                    WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
+    except sqlite3.OperationalError:
+        # Fallback por seguridad
+        c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, NULL, NULL
+                    FROM matches m
+                    JOIN usuarios u1 ON m.usuario1_id=u1.id
+                    JOIN usuarios u2 ON m.usuario2_id=u2.id
+                    WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
+        
     matches = c.fetchall()
 
     if not matches:
-        st.info("Aún no tienes matches. ¡Ve a perfiles para conectar!")
+        st.info("No tienes chats activos. Haz match en 'Perfiles' para empezar a hablar.")
         conn.close()
         return
 
     for m in matches:
         match_id = m[0]
-        # Determinar quién es "el otro"
-        if m[3] == usuario_id: # Si yo soy usuario1
-            nombre_otro = m[2] # El otro es usuario2
-            foto_propia = m[5]
+        # Identificar usuarios
+        if m[3] == usuario_id: 
+            nombre_otro = m[2].split('@')[0]
             foto_otro = m[6]
+            foto_mia = m[5]
         else:
-            nombre_otro = m[1] # El otro es usuario1
-            foto_propia = m[6]
+            nombre_otro = m[1].split('@')[0]
             foto_otro = m[5]
+            foto_mia = m[6]
             
-        # Definir avatares (Imagen o URL por defecto si no hay foto)
-        avatar_propio = foto_propia if foto_propia else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-        avatar_otro = foto_otro if foto_otro else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-            
-        with st.expander(f"💬 Chat con {nombre_otro.split('@')[0]}", expanded=False):
-            # Historial
+        # Validar ruta de avatar para evitar errores
+        avatar_otro_valido = foto_otro if (foto_otro and os.path.exists(foto_otro)) else None
+        avatar_mio_valido = foto_mia if (foto_mia and os.path.exists(foto_mia)) else None
+
+        with st.expander(f"💬 {nombre_otro}", expanded=False):
             c.execute("SELECT remitente_id, mensaje FROM mensajes WHERE match_id=? ORDER BY timestamp ASC", (match_id,))
             msgs = c.fetchall()
             
-            chat_container = st.container(height=300)
-            for remitente, texto in msgs:
-                role = "user" if remitente == usuario_id else "assistant"
-                avatar = avatar_propio if remitente == usuario_id else avatar_otro
-                with chat_container.chat_message(role, avatar=avatar):
-                    st.write(texto)
+            # Contenedor visual de mensajes
+            with st.container(height=350):
+                for remitente, texto in msgs:
+                    es_mio = (remitente == usuario_id)
+                    role = "user" if es_mio else "assistant"
+                    avatar = avatar_mio_valido if es_mio else avatar_otro_valido
+                    
+                    with st.chat_message(role, avatar=avatar):
+                        st.write(texto)
             
-            # Input
-            nuevo_msg = st.text_input("Escribe algo...", key=f"input_{match_id}")
-            if st.button("Enviar", key=f"send_{match_id}"):
-                if nuevo_msg:
+            # Input para enviar mensaje
+            with st.form(key=f"form_{match_id}", clear_on_submit=True):
+                col_txt, col_btn = st.columns([5, 1])
+                with col_txt:
+                    nuevo_msg = st.text_input("Mensaje", key=f"input_{match_id}", label_visibility="collapsed", placeholder="Escribe aquí...")
+                with col_btn:
+                    enviado = st.form_submit_button("➤")
+                
+                if enviado and nuevo_msg:
                     c.execute("INSERT INTO mensajes (match_id, remitente_id, mensaje) VALUES (?,?,?)", (match_id, usuario_id, nuevo_msg))
                     conn.commit()
                     st.rerun()
