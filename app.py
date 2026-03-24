@@ -1,0 +1,421 @@
+import streamlit as st
+import sqlite3
+import bcrypt
+import os
+from email_validator import validate_email, EmailNotValidError
+
+# --- CONFIGURACIÓN DE PÁGINA (Debe ser lo primero) ---
+st.set_page_config(page_title="TeVi 👀", layout="wide", initial_sidebar_state="expanded")
+
+
+
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# Cargar estilos
+local_css("style.css")
+
+
+
+
+
+
+# ------------------ BASE DE DATOS ------------------
+def init_db():
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+
+    c.execute("""CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        correo TEXT UNIQUE,
+        contraseña TEXT,
+        facultad TEXT,
+        carrera TEXT,
+        edad INTEGER,
+        intereses TEXT,
+        foto TEXT,
+        ubicacion TEXT,
+        premium INTEGER DEFAULT 0
+    )""")
+
+    # Migración segura: Verificar si columnas nuevas existen para evitar errores
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN foto TEXT")
+    except sqlite3.OperationalError:
+        pass 
+
+    c.execute("""CREATE TABLE IF NOT EXISTS likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        liked_id INTEGER
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS dislikes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        disliked_id INTEGER
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS matches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario1_id INTEGER,
+        usuario2_id INTEGER
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS mensajes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        match_id INTEGER,
+        remitente_id INTEGER,
+        mensaje TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS pagos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        monto INTEGER,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    conn.commit()
+    conn.close()
+
+# Asegurar que la carpeta de subidas existe al inicio
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
+# ------------------ AUTENTICACIÓN ------------------
+def login():
+    st.title("TeVi Login")
+    correo = st.text_input("Correo institucional")
+    contraseña = st.text_input("Contraseña", type="password")
+
+    if st.button("Iniciar sesión"):
+        conn = sqlite3.connect("tevi.db")
+        c = conn.cursor()
+        c.execute("SELECT id, contraseña FROM usuarios WHERE correo=?", (correo,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and bcrypt.checkpw(contraseña.encode(), user[1].encode()):
+            st.session_state["usuario_id"] = user[0]
+            st.success("Sesión iniciada")
+        else:
+            st.error("Credenciales inválidas")
+
+def registro():
+    st.title("Registro")
+    correo = st.text_input("Correo institucional")
+    contraseña = st.text_input("Contraseña", type="password")
+
+    if st.button("Registrar"):
+        try:
+            v = validate_email(correo)
+            dominio = correo.split("@")[1]
+            if not dominio.endswith(".edu.co"):
+                st.error("Solo correos institucionales permitidos")
+                return
+        except EmailNotValidError:
+            st.error("Correo inválido")
+            return
+
+        hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt()).decode()
+
+        conn = sqlite3.connect("tevi.db")
+        c = conn.cursor()
+        try:
+            c.execute("INSERT INTO usuarios (correo, contraseña) VALUES (?,?)", (correo, hashed))
+            conn.commit()
+            st.success("Usuario registrado")
+        except:
+            st.error("El correo ya existe")
+        conn.close()
+
+# ------------------ PERFIL ------------------
+def perfil(usuario_id):
+    st.title("Mi Perfil")
+    
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+    c.execute("SELECT facultad, carrera, edad, intereses, ubicacion, foto FROM usuarios WHERE id=?", (usuario_id,))
+    datos = c.fetchone()
+    conn.close()
+
+    # Valores actuales o vacíos
+    fac_val = datos[0] if datos and datos[0] else ""
+    car_val = datos[1] if datos and datos[1] else ""
+    edad_val = datos[2] if datos and datos[2] else 18
+    int_val = datos[3] if datos and datos[3] else ""
+    ubi_val = datos[4] if datos and datos[4] else ""
+    foto_actual = datos[5] if datos and datos[5] else None
+
+    # Variable para controlar la ubicación en el formulario
+    if "temp_ubicacion" not in st.session_state:
+        st.session_state.temp_ubicacion = ubi_val
+
+    with st.form("perfil_form"):
+        st.info("Completa tu perfil para empezar a ver gente.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            facultad = st.text_input("Facultad", value=fac_val)
+            edad = st.number_input("Edad", 16, 99, value=edad_val)
+            
+            # Sección de Ubicación Automática
+            st.markdown("---")
+            st.markdown("**Ubicación Real**")
+            # Simulamos la obtención de coordenadas del celular
+            st.write("Presiona para obtener la ubicación de tu celular:")
+            if st.form_submit_button("Detectar mi ubicación actual"):
+                st.session_state.temp_ubicacion = "Ubicación Detectada (GPS)"
+                st.success("Ubicación obtenida exitosamente")
+            
+            # Campo de solo lectura para confirmar
+            ubicacion = st.text_input("Estado Ubicación", value=st.session_state.temp_ubicacion, disabled=True)
+            
+        with col2:
+            carrera = st.text_input("Carrera", value=car_val)
+            intereses = st.text_area("Intereses y Descripción", value=int_val, height=150)
+        
+        st.markdown("---")
+        col_foto1, col_foto2 = st.columns([1, 2])
+        with col_foto1:
+            if foto_actual:
+                # Validación segura de ruta de imagen
+                img_show = "https://placehold.co/100x100?text=Foto"
+                if foto_actual and isinstance(foto_actual, str) and os.path.exists(foto_actual):
+                    img_show = foto_actual
+                st.image(img_show, width=100, caption="Actual", clamp=True)
+            else:
+                st.warning("Sin foto de perfil")
+        with col_foto2:
+            foto = st.file_uploader("Actualizar foto", type=["jpg","png"])
+        
+        # Botón principal de guardado
+        submitted = st.form_submit_button("Guardar Perfil")
+
+    if submitted:
+        # Validación: Ubicación obligatoria, Foto opcional
+        if not ubicacion:
+            st.error("Debes detectar tu ubicación para continuar.")
+        else:
+            conn = sqlite3.connect("tevi.db")
+            c = conn.cursor()
+            
+            # Definir nombre de la foto (la nueva o mantener la vieja)
+            nombre_foto = foto_actual
+            if foto:
+                # Guardar el archivo físicamente
+                file_path = os.path.join("uploads", f"{usuario_id}_{foto.name}")
+                with open(file_path, "wb") as f:
+                    f.write(foto.getbuffer())
+                nombre_foto = file_path
+
+            c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=? WHERE id=?""",
+                    (facultad, carrera, edad, intereses, ubicacion, nombre_foto, usuario_id))
+            conn.commit()
+            conn.close()
+            st.success("¡Perfil guardado correctamente! Tus datos están seguros. ✅")
+            st.rerun()
+
+# ------------------ PERFILES / MATCH ------------------
+def ver_perfiles(usuario_id):
+    st.title("👀 Quién me miró")
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+    # Seleccionamos más datos para mostrar una tarjeta atractiva
+    c.execute("""SELECT id, facultad, carrera, intereses, edad FROM usuarios 
+                 WHERE id!=? AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id=?)""", 
+                 (usuario_id, usuario_id))
+    perfiles = c.fetchall()
+    conn.close()
+
+    if not perfiles:
+        st.info("No hay perfiles nuevos por ahora. ¡Vuelve pronto!")
+        return
+
+    # Mostrar perfiles en columnas (tarjetas)
+    col1, col2, col3 = st.columns(3)
+    
+    for i, p in enumerate(perfiles):
+        pid, p_facultad, p_carrera, p_intereses, p_edad = p
+        
+        # Distribuir en columnas
+        with (col1 if i % 3 == 0 else col2 if i % 3 == 1 else col3):
+            with st.container(border=True):
+                st.markdown(f"### {p_carrera or 'Estudiante'}")
+                st.caption(f"📍 {p_facultad} | 🎂 {p_edad or 18} años")
+                st.write(f"_{p_intereses or 'Sin descripción'}_")
+                
+                if st.button("👀 Me miró (Like)", key=f"like_{pid}", type="primary"):
+                    conn = sqlite3.connect("tevi.db")
+                    c = conn.cursor()
+                    
+                    # Registrar Like
+                    c.execute("INSERT INTO likes (usuario_id, liked_id) VALUES (?,?)", (usuario_id, pid))
+                    
+                    # Verificar Match
+                    c.execute("SELECT * FROM likes WHERE usuario_id=? AND liked_id=?", (pid, usuario_id))
+                    match_data = c.fetchone()
+                    
+                    if match_data:
+                        c.execute("INSERT INTO matches (usuario1_id, usuario2_id) VALUES (?,?)", (min(usuario_id, pid), max(usuario_id, pid)))
+                        st.balloons()
+                        st.toast("¡ES UN MATCH! 🎉", icon="😍")
+                        st.success(f"¡Hiciste Match! Ahora puedes chatear.")
+                    else:
+                        st.toast("Le avisamos que lo miraste 👍", icon="✅")
+                    
+                    conn.commit()
+                    conn.close()
+                    st.rerun()
+
+# ------------------ CHAT ------------------
+def chat(usuario_id):
+    # Estado para controlar qué chat está abierto
+    if "active_chat" not in st.session_state:
+        st.session_state.active_chat = None
+
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+    
+    # JOIN para obtener el correo/nombre del otro usuario
+    c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, u1.foto, u2.foto 
+                 FROM matches m
+                 JOIN usuarios u1 ON m.usuario1_id=u1.id
+                 JOIN usuarios u2 ON m.usuario2_id=u2.id
+                 WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
+    matches = c.fetchall()
+
+    if not matches:
+        st.info("Aún no tienes matches. ¡Ve a perfiles para conectar!")
+        conn.close()
+        return
+
+    for m in matches:
+        match_id = m[0]
+        # Determinar quién es "el otro"
+        if m[3] == usuario_id: # Si yo soy usuario1
+            nombre_otro = m[2] # El otro es usuario2
+            foto_propia = m[5]
+            foto_otro = m[6]
+        else:
+            nombre_otro = m[1] # El otro es usuario1
+            foto_propia = m[6]
+            foto_otro = m[5]
+            
+        # Definir avatares (Imagen o URL por defecto si no hay foto)
+        avatar_propio = foto_propia if foto_propia else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+        avatar_otro = foto_otro if foto_otro else "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            
+        with st.expander(f"💬 Chat con {nombre_otro.split('@')[0]}", expanded=False):
+            # Historial
+            c.execute("SELECT remitente_id, mensaje FROM mensajes WHERE match_id=? ORDER BY timestamp ASC", (match_id,))
+            msgs = c.fetchall()
+            
+            chat_container = st.container(height=300)
+            for remitente, texto in msgs:
+                role = "user" if remitente == usuario_id else "assistant"
+                avatar = avatar_propio if remitente == usuario_id else avatar_otro
+                with chat_container.chat_message(role, avatar=avatar):
+                    st.write(texto)
+            
+            # Input
+            nuevo_msg = st.text_input("Escribe algo...", key=f"input_{match_id}")
+            if st.button("Enviar", key=f"send_{match_id}"):
+                if nuevo_msg:
+                    c.execute("INSERT INTO mensajes (match_id, remitente_id, mensaje) VALUES (?,?,?)", (match_id, usuario_id, nuevo_msg))
+                    conn.commit()
+                    st.rerun()
+
+    conn.close()
+
+# ------------------ PREMIUM ------------------
+def premium(usuario_id):
+    st.title("💰 Premium")
+    
+    st.markdown("### 🚧 Función en Mantenimiento")
+    st.image("https://media.giphy.com/media/l0HlOaQcLJ2hHpYcw/giphy.gif", width=300)
+    st.warning("⚠️ La pasarela de pagos aún no está disponible.")
+    st.info("Estamos trabajando para traerte funciones exclusivas muy pronto. ¡Gracias por tu paciencia!")
+
+# ------------------ APP PRINCIPAL ------------------
+init_db()
+
+if "usuario_id" not in st.session_state:
+    if "auth_mode" not in st.session_state:
+        st.session_state.auth_mode = "Login"
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔐 Iniciar Sesión"):
+            st.session_state.auth_mode = "Login"
+    with col2:
+        if st.button("📝 Registrarse"):
+            st.session_state.auth_mode = "Registro"
+
+    if st.session_state.auth_mode == "Login":
+        login()
+    else:
+        registro()
+else:
+    st.sidebar.title("Navegación")
+    
+    # Notificación de "Miradas" (Likes recibidos) en la barra lateral
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+    c.execute("SELECT count(*) FROM likes WHERE liked_id=?", (st.session_state["usuario_id"],))
+    num_likes = c.fetchone()[0]
+    conn.close()
+    if num_likes > 0:
+        st.sidebar.info(f"**{num_likes} personas** te han mirado.")
+    
+    # Control de navegación por estado para permitir redirecciones
+    if "menu_actual" not in st.session_state:
+        st.session_state["menu_actual"] = "Perfil" # Por defecto ir a perfil primero
+    
+    # Menú de navegación con botones (sin puntos de selección)
+    if st.sidebar.button("Inicio"):
+        st.session_state["menu_actual"] = "Inicio"
+    if st.sidebar.button("Mi Perfil"):
+        st.session_state["menu_actual"] = "Perfil"
+    if st.sidebar.button("Perfiles"):
+        st.session_state["menu_actual"] = "Perfiles"
+    if st.sidebar.button("Chat"):
+        st.session_state["menu_actual"] = "Chat"
+    if st.sidebar.button("Premium"):
+        st.session_state["menu_actual"] = "Premium"
+    
+    st.sidebar.markdown("---")
+    # Lógica de confirmación de Logout
+    if "confirmar_logout" not in st.session_state:
+        st.session_state["confirmar_logout"] = False
+
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state["confirmar_logout"] = True
+        st.rerun()
+
+    if st.session_state["confirmar_logout"]:
+        st.sidebar.warning("¿Estás seguro de salir?")
+        col_si, col_no = st.sidebar.columns(2)
+        if col_si.button("Sí"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+        if col_no.button("No"):
+            st.session_state["confirmar_logout"] = False
+            st.rerun()
+
+    if st.session_state["menu_actual"] == "Perfil":
+        perfil(st.session_state["usuario_id"])
+    elif st.session_state["menu_actual"] == "Perfiles":
+        ver_perfiles(st.session_state["usuario_id"])
+    elif st.session_state["menu_actual"] == "Chat":
+        chat(st.session_state["usuario_id"])
+    elif st.session_state["menu_actual"] == "Premium":
+        premium(st.session_state["usuario_id"])
+    else:
+        st.title("Bienvenido a TeVi")
+        st.write("Explora perfiles, haz match y conecta con tu comunidad universitaria.")
+        st.image("https://source.unsplash.com/random/800x400/?university,students", caption="Comunidad Estudiantil")
