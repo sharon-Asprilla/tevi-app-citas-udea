@@ -225,9 +225,11 @@ def ver_perfiles(usuario_id):
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
     # Seleccionamos más datos para mostrar una tarjeta atractiva
-    c.execute("""SELECT id, facultad, carrera, intereses, edad FROM usuarios 
-                 WHERE id!=? AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id=?)""", 
-                 (usuario_id, usuario_id))
+    c.execute("""SELECT id, facultad, carrera, intereses, edad, foto, correo FROM usuarios 
+                 WHERE id!=? 
+                 AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id=?)
+                 AND id NOT IN (SELECT disliked_id FROM dislikes WHERE usuario_id=?)""", 
+                 (usuario_id, usuario_id, usuario_id))
     perfiles = c.fetchall()
     conn.close()
 
@@ -239,37 +241,55 @@ def ver_perfiles(usuario_id):
     col1, col2, col3 = st.columns(3)
     
     for i, p in enumerate(perfiles):
-        pid, p_facultad, p_carrera, p_intereses, p_edad = p
+        pid, p_facultad, p_carrera, p_intereses, p_edad, p_foto, p_correo = p
         
         # Distribuir en columnas
         with (col1 if i % 3 == 0 else col2 if i % 3 == 1 else col3):
             with st.container(border=True):
-                st.markdown(f"### {p_carrera or 'Estudiante'}")
-                st.caption(f"📍 {p_facultad} | 🎂 {p_edad or 18} años")
+                # Mostrar foto del usuario
+                if p_foto and os.path.exists(p_foto):
+                    st.image(p_foto, use_container_width=True)
+                else:
+                    st.image("https://placehold.co/300x200?text=Sin+Foto", use_container_width=True)
+
+                nombre = p_correo.split('@')[0].capitalize()
+                st.markdown(f"### {nombre}, {p_edad or 18}")
+                st.markdown(f"🎓 **{p_carrera or 'Estudiante'}**\n📍 {p_facultad}")
                 st.write(f"_{p_intereses or 'Sin descripción'}_")
                 
-                if st.button("👀 Me miró (Like)", key=f"like_{pid}", type="primary"):
-                    conn = sqlite3.connect("tevi.db")
-                    c = conn.cursor()
-                    
-                    # Registrar Like
-                    c.execute("INSERT INTO likes (usuario_id, liked_id) VALUES (?,?)", (usuario_id, pid))
-                    
-                    # Verificar Match
-                    c.execute("SELECT * FROM likes WHERE usuario_id=? AND liked_id=?", (pid, usuario_id))
-                    match_data = c.fetchone()
-                    
-                    if match_data:
-                        c.execute("INSERT INTO matches (usuario1_id, usuario2_id) VALUES (?,?)", (min(usuario_id, pid), max(usuario_id, pid)))
-                        st.balloons()
-                        st.toast("¡ES UN MATCH! 🎉", icon="😍")
-                        st.success(f"¡Hiciste Match! Ahora puedes chatear.")
-                    else:
-                        st.toast("Le avisamos que lo miraste 👍", icon="✅")
-                    
-                    conn.commit()
-                    conn.close()
-                    st.rerun()
+                col_no, col_si = st.columns(2)
+                with col_no:
+                    if st.button("❌ No interesa", key=f"dislike_{pid}"):
+                        conn = sqlite3.connect("tevi.db")
+                        c = conn.cursor()
+                        c.execute("INSERT INTO dislikes (usuario_id, disliked_id) VALUES (?,?)", (usuario_id, pid))
+                        conn.commit()
+                        conn.close()
+                        st.rerun()
+                
+                with col_si:
+                    if st.button("👀 Me miró", key=f"like_{pid}", type="primary"):
+                        conn = sqlite3.connect("tevi.db")
+                        c = conn.cursor()
+                        
+                        # Registrar Like
+                        c.execute("INSERT INTO likes (usuario_id, liked_id) VALUES (?,?)", (usuario_id, pid))
+                        
+                        # Verificar Match
+                        c.execute("SELECT * FROM likes WHERE usuario_id=? AND liked_id=?", (pid, usuario_id))
+                        match_data = c.fetchone()
+                        
+                        if match_data:
+                            c.execute("INSERT INTO matches (usuario1_id, usuario2_id) VALUES (?,?)", (min(usuario_id, pid), max(usuario_id, pid)))
+                            st.balloons()
+                            st.toast("¡ES UN MATCH! 🎉", icon="😍")
+                            st.success(f"¡Hiciste Match! Ahora puedes chatear.")
+                        else:
+                            st.toast("Le avisamos que lo miraste 👍", icon="✅")
+                        
+                        conn.commit()
+                        conn.close()
+                        st.rerun()
 
 # ------------------ CHAT ------------------
 def chat(usuario_id):
