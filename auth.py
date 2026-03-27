@@ -17,7 +17,7 @@ def login():
 
         if user and bcrypt.checkpw(contraseña.encode(), user[1].encode()):
             st.session_state["usuario_id"] = user[0]
-            st.success("Sesión iniciada ✅")
+            st.rerun()
         else:
             st.error("Credenciales inválidas ❌")
 

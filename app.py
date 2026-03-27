@@ -100,7 +100,7 @@ def login():
 
         if user and bcrypt.checkpw(contraseña.encode(), user[1].encode()):
             st.session_state["usuario_id"] = user[0]
-            st.success("Sesión iniciada")
+            st.rerun()
         else:
             st.error("Credenciales inválidas")
 
@@ -216,7 +216,7 @@ def perfil(usuario_id):
                     (facultad, carrera, edad, intereses, ubicacion, nombre_foto, usuario_id))
             conn.commit()
             conn.close()
-            st.success("¡Perfil guardado correctamente! Tus datos están seguros. ✅")
+            st.session_state["menu_actual"] = "Perfiles"
             st.rerun()
 
 # ------------------ PERFILES / MATCH ------------------
@@ -451,6 +451,13 @@ else:
     elif st.session_state["menu_actual"] == "Premium":
         premium(st.session_state["usuario_id"])
     else:
-        st.title("Bienvenido a TeVi")
-        st.write("Explora perfiles, haz match y conecta con tu comunidad universitaria.")
-        st.image("https://source.unsplash.com/random/800x400/?university,students", caption="Comunidad Estudiantil")
+        st.title(" ¡Bienvenido a TeVi!")
+        st.markdown("""
+        ### ¿Has visto a alguien en la U y no sabes cómo hablarle?
+        Todos hemos tenido ese **crush** que vemos a diario en la biblioteca, en la cafetería o cruzando el campus, pero a veces los nervios nos ganan y no sabemos cómo acercarnos. **TeVi** nace para que esos encuentros de pasillo se conviertan en algo más.
+
+        Esta es la app de citas diseñada exclusivamente para nuestra comunidad universitaria. Aquí puedes encontrar a esa persona que te llama la atención, descubrir si tienen gustos en común y romper el hielo de forma segura y divertida.
+
+        **¡El amor de tu vida podría estar sentado en el salón de al lado!** No dejes pasar la oportunidad de conectar con alguien especial de tu propia universidad.
+        """)
+        st.image("https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80", caption="Tu historia de amor comienza en el campus")

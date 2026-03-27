@@ -17,4 +17,5 @@ def perfil(usuario_id):
                   (facultad, carrera, edad, intereses, ubicacion, foto.name if foto else None, usuario_id))
         conn.commit()
         conn.close()
-        st.success("Perfil actualizado ✅")
+        st.session_state["menu_actual"] = "Perfiles"
+        st.rerun()
