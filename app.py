@@ -4,6 +4,25 @@ import bcrypt
 import os
 from email_validator import validate_email, EmailNotValidError
 
+
+
+
+st.set_page_config(page_title="tevi")
+
+st.markdown("""
+<link rel="manifest" href="/static/manifest.json">
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js")
+    .then(() => console.log("Service Worker registrado"))
+    .catch(err => console.error("Error:", err));
+}
+</script>
+""", unsafe_allow_html=True)
+
+
+
+
 # --- CONFIGURACIÓN DE PÁGINA (Debe ser lo primero) ---
 st.set_page_config(page_title="TeVi 👀", layout="wide", initial_sidebar_state="expanded")
 
@@ -85,52 +104,8 @@ def init_db():
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
 
-# ------------------ AUTENTICACIÓN ------------------
-def login():
-    st.title("TeVi Login")
-    correo = st.text_input("Correo institucional")
-    contraseña = st.text_input("Contraseña", type="password")
-
-    if st.button("Iniciar sesión"):
-        conn = sqlite3.connect("tevi.db")
-        c = conn.cursor()
-        c.execute("SELECT id, contraseña FROM usuarios WHERE correo=?", (correo,))
-        user = c.fetchone()
-        conn.close()
-
-        if user and bcrypt.checkpw(contraseña.encode(), user[1].encode()):
-            st.session_state["usuario_id"] = user[0]
-            st.rerun()
-        else:
-            st.error("Credenciales inválidas")
-
-def registro():
-    st.title("Registro")
-    correo = st.text_input("Correo institucional")
-    contraseña = st.text_input("Contraseña", type="password")
-
-    if st.button("Registrar"):
-        try:
-            v = validate_email(correo)
-            dominio = correo.split("@")[1]
-            if not dominio.endswith(".edu.co"):
-                st.error("Solo correos institucionales permitidos")
-                return
-        except EmailNotValidError:
-            st.error("Correo inválido")
-            return
-
-        hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt()).decode()
-
-        conn = sqlite3.connect("tevi.db")
-        c = conn.cursor()
-        try:
-            c.execute("INSERT INTO usuarios (correo, contraseña) VALUES (?,?)", (correo, hashed))
-            conn.commit()
-            st.success("Usuario registrado")
-        except:
-            st.error("El correo ya existe")
-        conn.close()
+# Import authentication functions from auth.py
+from auth import login, registro, forgot_password
 
 # ------------------ PERFIL ------------------
 def perfil(usuario_id):
@@ -380,20 +355,14 @@ init_db()
 
 if "usuario_id" not in st.session_state:
     if "auth_mode" not in st.session_state:
-        st.session_state.auth_mode = "Login"
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔐 Iniciar Sesión"):
-            st.session_state.auth_mode = "Login"
-    with col2:
-        if st.button("📝 Registrarse"):
-            st.session_state.auth_mode = "Registro"
+        st.session_state.auth_mode = "Registro" # Default to registration as requested
 
     if st.session_state.auth_mode == "Login":
         login()
-    else:
+    elif st.session_state.auth_mode == "Registro":
         registro()
+    elif st.session_state.auth_mode == "Forgot_Password":
+        forgot_password()
 else:
     st.sidebar.title("Navegación")
     
@@ -426,9 +395,15 @@ else:
     # Lógica de confirmación de Logout
     if "confirmar_logout" not in st.session_state:
         st.session_state["confirmar_logout"] = False
+    if "confirmar_borrado" not in st.session_state:
+        st.session_state["confirmar_borrado"] = False
 
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state["confirmar_logout"] = True
+        st.rerun()
+
+    if st.sidebar.button("Borrar Cuenta"):
+        st.session_state["confirmar_borrado"] = True
         st.rerun()
 
     if st.session_state["confirmar_logout"]:
@@ -440,6 +415,31 @@ else:
             st.rerun()
         if col_no.button("No"):
             st.session_state["confirmar_logout"] = False
+            st.rerun()
+
+    if st.session_state["confirmar_borrado"]:
+        st.sidebar.error("⚠️ ¿ELIMINAR CUENTA? Esto borrará tus matches y mensajes permanentemente.")
+        col_si_b, col_no_b = st.sidebar.columns(2)
+        if col_si_b.button("Sí, borrar todo", key="del_acc_yes"):
+            uid = st.session_state["usuario_id"]
+            conn = sqlite3.connect("tevi.db")
+            c = conn.cursor()
+            # Limpieza profunda de datos relacionados para no dejar rastro
+            c.execute("DELETE FROM mensajes WHERE match_id IN (SELECT id FROM matches WHERE usuario1_id=? OR usuario2_id=?)", (uid, uid))
+            c.execute("DELETE FROM matches WHERE usuario1_id=? OR usuario2_id=?", (uid, uid))
+            c.execute("DELETE FROM likes WHERE usuario_id=? OR liked_id=?", (uid, uid))
+            c.execute("DELETE FROM dislikes WHERE usuario_id=? OR disliked_id=?", (uid, uid))
+            c.execute("DELETE FROM pagos WHERE usuario_id=?", (uid,))
+            c.execute("DELETE FROM usuarios WHERE id=?", (uid,))
+            conn.commit()
+            conn.close()
+            
+            # Limpiar sesión y redirigir al registro
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+        if col_no_b.button("No, cancelar", key="del_acc_no"):
+            st.session_state["confirmar_borrado"] = False
             st.rerun()
 
     if st.session_state["menu_actual"] == "Perfil":
