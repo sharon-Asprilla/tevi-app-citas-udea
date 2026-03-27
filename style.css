@@ -73,3 +73,30 @@ div.stButton > button:active {
     padding-top: 3rem;
     padding-bottom: 3rem;
 }
+
+/* --- INTERFAZ ESTILO MESSENGER --- */
+/* Burbuja del Usuario (Tú) - Naranja con texto negro */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    background-color: #FF8C00 !important; 
+    border-radius: 20px 20px 4px 20px !important;
+    color: #000000 !important;
+    margin-left: auto;
+    flex-direction: row-reverse !important;
+    width: fit-content;
+    max-width: 85%;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
+    color: #000000 !important;
+}
+
+/* Burbuja del Asistente (La otra persona) - Gris claro */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    background-color: #E1E1E1 !important;
+    border-radius: 20px 20px 20px 4px !important;
+    color: #000000 !important;
+    width: fit-content;
+    max-width: 85%;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) p {
+    color: #000000 !important;
+}

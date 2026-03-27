@@ -4,6 +4,18 @@ import bcrypt
 import os
 from email_validator import validate_email, EmailNotValidError
 
+#logo en el navegador 
+
+
+st.set_page_config(
+    page_title="Tevi",
+    page_icon="img\logo_sinfondo.png"
+)
+
+
+
+
+
 
 
 
@@ -109,7 +121,9 @@ from auth import login, registro, forgot_password
 
 # ------------------ PERFIL ------------------
 def perfil(usuario_id):
+    st.info("dele en las >> para poder ver el menu, esta  al lado izquierdo")
     st.title("Mi Perfil")
+    st.text("     crea tu perfil para empezar a ver gente en la u  ")
     
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
@@ -130,7 +144,7 @@ def perfil(usuario_id):
         st.session_state.temp_ubicacion = ubi_val
 
     with st.form("perfil_form"):
-        st.info("Completa tu perfil para empezar a ver gente.")
+        st.info("Completa tu perfil  y dale en guardar")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -234,7 +248,7 @@ def ver_perfiles(usuario_id):
                 
                 col_no, col_si = st.columns(2)
                 with col_no:
-                    if st.button("❌ No interesa", key=f"dislike_{pid}"):
+                    if st.button(" No interesa", key=f"dislike_{pid}"):
                         conn = sqlite3.connect("tevi.db")
                         c = conn.cursor()
                         c.execute("INSERT INTO dislikes (usuario_id, disliked_id) VALUES (?,?)", (usuario_id, pid))
@@ -257,10 +271,10 @@ def ver_perfiles(usuario_id):
                         if match_data:
                             c.execute("INSERT INTO matches (usuario1_id, usuario2_id) VALUES (?,?)", (min(usuario_id, pid), max(usuario_id, pid)))
                             st.balloons()
-                            st.toast("¡ES UN MATCH! 🎉", icon="😍")
+                            st.toast("¡ES UN MATCH! ", icon="😍")
                             st.success(f"¡Hiciste Match! Ahora puedes chatear.")
                         else:
-                            st.toast("Le avisamos que lo miraste 👍", icon="✅")
+                            st.toast("Le avisamos que lo miraste ", icon="✅")
                         
                         conn.commit()
                         conn.close()
@@ -310,44 +324,18 @@ def chat(usuario_id):
             
         # Validar ruta de avatar para evitar errores
         avatar_otro_valido = foto_otro if (foto_otro and os.path.exists(foto_otro)) else None
-        avatar_mio_valido = foto_mia if (foto_mia and os.path.exists(foto_mia)) else None
-
-        with st.expander(f"💬 {nombre_otro}", expanded=False):
-            c.execute("SELECT remitente_id, mensaje FROM mensajes WHERE match_id=? ORDER BY timestamp ASC", (match_id,))
-            msgs = c.fetchall()
-            
-            # Contenedor visual de mensajes
-            with st.container(height=350):
-                for remitente, texto in msgs:
-                    es_mio = (remitente == usuario_id)
-                    role = "user" if es_mio else "assistant"
-                    avatar = avatar_mio_valido if es_mio else avatar_otro_valido
-                    
-                    with st.chat_message(role, avatar=avatar):
-                        st.write(texto)
-            
-            # Input para enviar mensaje
-            with st.form(key=f"form_{match_id}", clear_on_submit=True):
-                col_txt, col_btn = st.columns([5, 1])
-                with col_txt:
-                    nuevo_msg = st.text_input("Mensaje", key=f"input_{match_id}", label_visibility="collapsed", placeholder="Escribe aquí...")
-                with col_btn:
-                    enviado = st.form_submit_button("➤")
-                
-                if enviado and nuevo_msg:
-                    c.execute("INSERT INTO mensajes (match_id, remitente_id, mensaje) VALUES (?,?,?)", (match_id, usuario_id, nuevo_msg))
-                    conn.commit()
-                    st.rerun()
+    from chat import chat as chat_v2
+    chat_v2(usuario_id)
 
     conn.close()
 
 # ------------------ PREMIUM ------------------
 def premium(usuario_id):
-    st.title("💰 Premium")
+    st.title(" Premium")
     
     st.markdown("### 🚧 Función en Mantenimiento")
     st.image("https://media.giphy.com/media/l0HlOaQcLJ2hHpYcw/giphy.gif", width=300)
-    st.warning("⚠️ La pasarela de pagos aún no está disponible.")
+    st.warning("⚠️ Los pagos aún no está disponible aun")
     st.info("Estamos trabajando para traerte funciones exclusivas muy pronto. ¡Gracias por tu paciencia!")
 
 # ------------------ APP PRINCIPAL ------------------
@@ -365,6 +353,8 @@ if "usuario_id" not in st.session_state:
         forgot_password()
 else:
     st.sidebar.title("Navegación")
+    st.sidebar.info("ℹ Dele ahí para ver el menú")
+   
     
     # Notificación de "Miradas" (Likes recibidos) en la barra lateral
     conn = sqlite3.connect("tevi.db")

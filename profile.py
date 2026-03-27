@@ -2,7 +2,9 @@ import streamlit as st
 import sqlite3
 
 def perfil(usuario_id):
-    st.title("👤 Mi Perfil")
+    
+    st.title(" Mi Perfil")
+   
     facultad = st.text_input("Facultad")
     carrera = st.text_input("Carrera")
     edad = st.number_input("Edad", 16, 99)
