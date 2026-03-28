@@ -34,7 +34,26 @@ def local_css(file_name):
 local_css("style.css")
 
 
+# CSS para ocultar elementos por defecto
+hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}     /* Oculta el menú de hamburguesa */
+    footer {visibility: hidden;}        /* Oculta el pie de página */
+    header {visibility: hidden;}        /* Oculta el encabezado por defecto */
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+
+
+
+# Cuadro de información estilo Streamlit
+if st.button("creadora"):
+    st.info("""
+    **Desarrolladora:** Sharon Asprilla  
+    **GitHub:** [sharon-Asprilla](https://github.com/sharon-Asprilla)  
+    Aquí puedes ver más proyectos que he creado.
+    """)
 
 
 
@@ -74,6 +93,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    try:
+        c.execute("ALTER TABLE mensajes ADD COLUMN tipo TEXT DEFAULT 'text'")
+    except sqlite3.OperationalError:
+        pass
+
     c.execute("""CREATE TABLE IF NOT EXISTS likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         usuario_id INTEGER,
@@ -97,7 +121,26 @@ def init_db():
         match_id INTEGER,
         remitente_id INTEGER,
         mensaje TEXT,
+        tipo TEXT DEFAULT 'text',
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS bloqueos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        bloqueado_id INTEGER,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+        FOREIGN KEY(bloqueado_id) REFERENCES usuarios(id)
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS reportes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        reportado_id INTEGER,
+        motivo TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+        FOREIGN KEY(reportado_id) REFERENCES usuarios(id)
     )""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS pagos (
@@ -253,8 +296,10 @@ def ver_perfiles(usuario_id):
                  WHERE id!=? 
                  AND sexo=?
                  AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id=?)
-                 AND id NOT IN (SELECT disliked_id FROM dislikes WHERE usuario_id=?)""", 
-                 (usuario_id, sexo_buscado, usuario_id, usuario_id))
+                 AND id NOT IN (SELECT disliked_id FROM dislikes WHERE usuario_id=?)
+                 AND id NOT IN (SELECT bloqueado_id FROM bloqueos WHERE usuario_id=?)
+                 AND id NOT IN (SELECT usuario_id FROM bloqueos WHERE bloqueado_id=?)""", 
+                 (usuario_id, sexo_buscado, usuario_id, usuario_id, usuario_id, usuario_id))
     perfiles = c.fetchall()
     conn.close()
 

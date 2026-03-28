@@ -51,6 +51,7 @@ def init_db():
         match_id INTEGER,
         remitente_id INTEGER,
         mensaje TEXT,
+        tipo TEXT DEFAULT 'text',
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(match_id) REFERENCES matches(id),
         FOREIGN KEY(remitente_id) REFERENCES usuarios(id)
@@ -65,6 +66,30 @@ def init_db():
         monto INTEGER,
         fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    )
+    """)
+
+    # Tabla de bloqueos
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS bloqueos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        bloqueado_id INTEGER,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+        FOREIGN KEY(bloqueado_id) REFERENCES usuarios(id)
+    )
+    """)
+
+    # Tabla de reportes
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS reportes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        reportado_id INTEGER,
+        motivo TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+        FOREIGN KEY(reportado_id) REFERENCES usuarios(id)
     )
     """)
 

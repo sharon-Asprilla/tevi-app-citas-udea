@@ -35,7 +35,7 @@ Asegúrate de tener todos los archivos (`app.py`, `style.css`) en una carpeta.
 Abre tu terminal o línea de comandos (CMD/PowerShell) en la carpeta del proyecto y ejecuta el siguiente comando para instalar las librerías necesarias:
 
 ```bash
-pip install streamlit bcrypt email-validator
+
 ```
 
 *   `streamlit`: Ejecuta la aplicación web.
@@ -62,7 +62,4 @@ Automáticamente se abrirá una pestaña en tu navegador (usualmente en `http://
 Desarrollado para conectar la comunidad universitaria. ❤️
 ```
 
-<!--
-[PROMPT_SUGGESTION]¿Cómo puedo desplegar esta aplicación en Streamlit Cloud para que otros la usen desde internet?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]¿Cómo puedo agregar una función para reportar usuarios por comportamiento inadecuado?[/PROMPT_SUGGESTION]
 
