@@ -12,6 +12,6 @@ def premium(usuario_id):
             c.execute("INSERT INTO pagos (usuario_id, monto) VALUES (?,?)", (usuario_id, monto))
             conn.commit()
             conn.close()
-            st.success("Ahora eres Premium ✅")
+            st.success("Ahora eres Premium ")
         else:
-            st.error("El mínimo es 10.000 COP ❌")
+            st.error("El mínimo es 10.000 COP ")
