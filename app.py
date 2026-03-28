@@ -5,8 +5,7 @@ import os
 from email_validator import validate_email, EmailNotValidError
 import os
 
-ruta = os.path.join("img", "logo_sinfondo.png")
-st.image(ruta)
+
 
 #logo en el navegador 
 
@@ -412,9 +411,12 @@ else:
             st.session_state["menu_actual"] = "Perfiles" # "Perfiles" es la vista de Descubrir
 
     with st.sidebar:
-        st.image("img\logo_sinfondo.png", use_container_width=True)
+        ruta = os.path.join("img", "logo_sinfondo.png")
+        st.image(ruta)
         st.markdown(f"### ❤️ Likes: {num_likes}")
         st.markdown("---")
+
+    
         
         if st.button(" Inicio", use_container_width=True):
             st.session_state.menu_actual = "Inicio"
