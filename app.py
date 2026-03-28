@@ -14,6 +14,7 @@ st.set_page_config(
 )
 
 st.markdown("""
+<style>
 <link rel="manifest" href="/static/manifest.json">
 <script>
 if ("serviceWorker" in navigator) {
@@ -22,6 +23,7 @@ if ("serviceWorker" in navigator) {
     .catch(err => console.error("Error:", err));
 }
 </script>
+</style>
 """, unsafe_allow_html=True)
 
 def local_css(file_name):
@@ -117,102 +119,125 @@ from auth import login, registro, forgot_password
 
 # ------------------ PERFIL ------------------
 def perfil(usuario_id):
-    st.info("dele en las >> para poder ver el menu, esta  al lado izquierdo")
-    st.title("Mi Perfil")
-    st.text("     crea tu perfil para empezar a ver gente en la u  ")
+    # Usar columnas para centrar el contenido del perfil
+    _, col_central, _ = st.columns([1, 4, 1])
     
-    conn = sqlite3.connect("tevi.db")
-    c = conn.cursor()
-    c.execute("SELECT facultad, carrera, edad, intereses, ubicacion, foto, sexo, preferencia FROM usuarios WHERE id=?", (usuario_id,))
-    datos = c.fetchone()
-    conn.close()
-
-    # Valores actuales o vacíos
-    fac_val = datos[0] if datos and datos[0] else ""
-    car_val = datos[1] if datos and datos[1] else ""
-    edad_val = datos[2] if datos and datos[2] else 18
-    int_val = datos[3] if datos and datos[3] else ""
-    ubi_val = datos[4] if datos and datos[4] else ""
-    foto_actual = datos[5] if datos and datos[5] else None
-    sexo_val = datos[6] if datos and datos[6] else "Femenino"
-    pref_val = datos[7] if datos and datos[7] else "Hombres"
-
-    # Variable para controlar la ubicación en el formulario
-    if "temp_ubicacion" not in st.session_state:
-        st.session_state.temp_ubicacion = ubi_val
-
-    with st.form("perfil_form"):
-        st.info("Completa tu perfil  y dale en guardar")
+    with col_central:
+        st.markdown("<h1 style='text-align: center;'> Mi Perfil</h1>", unsafe_allow_html=True)
         
-        col1, col2 = st.columns(2)
-        with col1:
-            facultad = st.text_input("Facultad", value=fac_val)
-            edad = st.number_input("Edad", 16, 99, value=edad_val)
+        conn = sqlite3.connect("tevi.db")
+        c = conn.cursor()
+        c.execute("SELECT facultad, carrera, edad, intereses, ubicacion, foto, sexo, preferencia FROM usuarios WHERE id=?", (usuario_id,))
+        datos = c.fetchone()
+        conn.close()
+
+        if not datos:
+            st.error("Error al cargar datos.")
+            return
+
+        fac_val, car_val, edad_val, int_val, ubi_val, foto_actual, sexo_val, pref_val = datos
+
+        if "temp_ubicacion" not in st.session_state:
+            st.session_state.temp_ubicacion = ubi_val or "No detectada"
+
+        facultad = st.text_input("Facultad", value=fac_val or "")
+        carrera = st.text_input("Carrera", value=car_val or "")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            edad = st.number_input("Edad", 16, 99, value=edad_val or 18)
             sexo = st.selectbox("Sexo", ["Femenino", "Masculino", "Otro"], 
                                 index=["Femenino", "Masculino", "Otro"].index(sexo_val) if sexo_val in ["Femenino", "Masculino", "Otro"] else 0)
-            preferencia = st.selectbox("Preferencia sexual", ["Hombres", "Mujeres"], 
+        with c2:
+            preferencia = st.selectbox("que te gustan?", ["Hombres", "Mujeres","otro"], 
                                         index=["Hombres", "Mujeres"].index(pref_val) if pref_val in ["Hombres", "Mujeres"] else 0)
-            
-            # Sección de Ubicación Automática
-            st.markdown("---")
-            st.markdown("**Ubicación Real**")
-            # Simulamos la obtención de coordenadas del celular
-            st.write("Presiona para obtener la ubicación de tu celular:")
-            if st.form_submit_button("Detectar mi ubicación actual"):
-                st.session_state.temp_ubicacion = "Ubicación Detectada (GPS)"
-                st.success("Ubicación obtenida exitosamente")
-            
-            # Campo de solo lectura para confirmar
-            ubicacion = st.text_input("Estado Ubicación", value=st.session_state.temp_ubicacion, disabled=True)
-            
-        with col2:
-            carrera = st.text_input("Carrera", value=car_val)
-            intereses = st.text_area("Intereses y Descripción", value=int_val, height=150)
-        
-        st.markdown("---")
-        col_foto1, col_foto2 = st.columns([1, 2])
-        with col_foto1:
-            if foto_actual:
-                # Validación segura de ruta de imagen
-                img_show = "https://placehold.co/100x100?text=Foto"
-                if foto_actual and isinstance(foto_actual, str) and os.path.exists(foto_actual):
-                    img_show = foto_actual
-                st.image(img_show, width=100, caption="Actual", clamp=True)
-            else:
-                st.warning("Sin foto de perfil")
-        with col_foto2:
-            foto = st.file_uploader("Actualizar foto", type=["jpg","png"])
-        
-        # Botón principal de guardado
-        submitted = st.form_submit_button("Guardar Perfil")
+            st.write(f"📍 **{st.session_state.temp_ubicacion}**")
+            if st.button("🔄 Actualizar GPS"):
+                st.session_state.temp_ubicacion = "Sede Principal UdeA"
+                st.rerun()
 
-    if submitted:
-        # Validación: Ubicación obligatoria, Foto opcional
-        if not ubicacion:
-            st.error("Debes detectar tu ubicación para continuar.")
-        else:
+        intereses = st.text_area("Sobre ti y tus Intereses", value=int_val or "", height=100)
+
+        foto = st.file_uploader("Actualizar foto de perfil", type=["jpg","png"])
+        if foto_actual and os.path.exists(foto_actual):
+            st.image(foto_actual, width=150, caption="Foto actual")
+
+        if st.button("Guardar perfil", type="primary", use_container_width=True):
             conn = sqlite3.connect("tevi.db")
             c = conn.cursor()
-            
-            # Definir nombre de la foto (la nueva o mantener la vieja)
             nombre_foto = foto_actual
             if foto:
-                # Guardar el archivo físicamente
                 file_path = os.path.join("uploads", f"{usuario_id}_{foto.name}")
-                with open(file_path, "wb") as f:
-                    f.write(foto.getbuffer())
+                with open(file_path, "wb") as f: f.write(foto.getbuffer())
                 nombre_foto = file_path
-
-            c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=?, sexo=?, preferencia=? WHERE id=?""",
-                    (facultad, carrera, edad, intereses, ubicacion, nombre_foto, sexo, preferencia, usuario_id))
+            c.execute("UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=?, sexo=?, preferencia=? WHERE id=?",
+                      (facultad, carrera, edad, intereses, st.session_state.temp_ubicacion, nombre_foto, sexo, preferencia, usuario_id))
             conn.commit()
             conn.close()
+            st.success("¡Perfil actualizado con éxito!")
+            st.balloons()
             st.session_state["menu_actual"] = "Perfiles"
             st.rerun()
 
 # ------------------ PERFILES / MATCH ------------------
+def mostrar_celebracion(usuario_id, pid_match):
+    """Pantalla especial de celebración cuando ocurre un Match"""
+    conn = sqlite3.connect("tevi.db")
+    c = conn.cursor()
+    # Datos del usuario actual
+    c.execute("SELECT foto, correo FROM usuarios WHERE id=?", (usuario_id,))
+    yo = c.fetchone()
+    # Datos del match
+    c.execute("SELECT foto, correo, edad, carrera, facultad, intereses FROM usuarios WHERE id=?", (pid_match,))
+    otro = c.fetchone()
+    conn.close()
+
+    st.balloons()
+    
+    with st.container(border=True):
+        st.markdown("<h1 style='text-align: center; color: #FF4B4B; font-size: 3rem;'>❤️ ¡ES UN MATCH! ❤️</h1>", unsafe_allow_html=True)
+        
+        col1, col_fire, col2 = st.columns([2, 1, 2])
+        
+        with col1:
+            foto_yo = yo[0] if (yo[0] and os.path.exists(yo[0])) else "https://placehold.co/300x300?text=Tú"
+            st.image(foto_yo, use_container_width=True, caption="Tú")
+        
+        with col_fire:
+            st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🔥</h1>", unsafe_allow_html=True)
+        
+        with col2:
+            foto_otro = otro[0] if (otro[0] and os.path.exists(otro[0])) else "https://placehold.co/300x300?text=Match"
+            st.image(foto_otro, use_container_width=True, caption=otro[1].split('@')[0].capitalize())
+
+        nombre_match = otro[1].split('@')[0].capitalize()
+        st.markdown(f"""
+            <div style='text-align: center; background-color: #1a1a1a; padding: 20px; border-radius: 15px; border: 1px solid #FF4B4B;'>
+                <h2 style='color: white;'>¡A {nombre_match} también le gustas!</h2>
+                <p style='font-size: 1.2rem;'>🎓 <b>{otro[3]}</b> en <b>{otro[4]}</b></p>
+                <p style='font-size: 1.1rem; font-style: italic; color: #ccc;'>"{otro[5] or '¡Sin descripción aún!'}"</p>
+                <hr style='border-color: #444;'>
+                <h3 style='color: #FF4B4B;'>¡Ya pueden dar el paso de hablar por chat y conocerse!</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        if st.button(" Ir al Chat ahora", type="primary", use_container_width=True):
+            st.session_state.menu_actual = "Chat"
+            st.session_state.match_celebration = None
+            st.rerun()
+        
+        if st.button(" Seguir descubriendo personas", use_container_width=True):
+            st.session_state.match_celebration = None
+            st.rerun()
+
 def ver_perfiles(usuario_id):
-    st.title("👀 Quién me miró")
+    # Si hay un match pendiente de celebrar, mostramos la pantalla de celebración
+    if st.session_state.get("match_celebration"):
+        mostrar_celebracion(usuario_id, st.session_state["match_celebration"])
+        return
+
+    st.title(" Quién me miró")
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
 
@@ -281,64 +306,16 @@ def ver_perfiles(usuario_id):
                         
                         if match_data:
                             c.execute("INSERT INTO matches (usuario1_id, usuario2_id) VALUES (?,?)", (min(usuario_id, pid), max(usuario_id, pid)))
-                            st.balloons()
-                            st.toast("¡ES UN MATCH! ", icon="😍")
-                            st.success(f"¡Hiciste Match! Ahora puedes chatear.")
+                            conn.commit()
+                            st.session_state["match_celebration"] = pid # Activamos la celebración
                         else:
+                            conn.commit()
                             st.toast("Le avisamos que lo miraste ", icon="✅")
-                        
-                        conn.commit()
                         conn.close()
                         st.rerun()
 
 # ------------------ CHAT ------------------
-def chat(usuario_id):
-    st.title("💬 Chat")
-
-    conn = sqlite3.connect("tevi.db")
-    c = conn.cursor()
-    
-    # JOIN para obtener el correo/nombre del otro usuario
-    # Usamos try-except para evitar errores si las columnas de fotos no están perfectamente sincronizadas
-    try:
-        c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, u1.foto, u2.foto 
-                    FROM matches m
-                    JOIN usuarios u1 ON m.usuario1_id=u1.id
-                    JOIN usuarios u2 ON m.usuario2_id=u2.id
-                    WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
-    except sqlite3.OperationalError:
-        # Fallback por seguridad
-        c.execute("""SELECT m.id, u1.correo, u2.correo, u1.id, u2.id, NULL, NULL
-                    FROM matches m
-                    JOIN usuarios u1 ON m.usuario1_id=u1.id
-                    JOIN usuarios u2 ON m.usuario2_id=u2.id
-                    WHERE m.usuario1_id=? OR m.usuario2_id=?""", (usuario_id, usuario_id))
-        
-    matches = c.fetchall()
-
-    if not matches:
-        st.info("No tienes chats activos. Haz match en 'Perfiles' para empezar a hablar.")
-        conn.close()
-        return
-
-    for m in matches:
-        match_id = m[0]
-        # Identificar usuarios
-        if m[3] == usuario_id: 
-            nombre_otro = m[2].split('@')[0]
-            foto_otro = m[6]
-            foto_mia = m[5]
-        else:
-            nombre_otro = m[1].split('@')[0]
-            foto_otro = m[5]
-            foto_mia = m[6]
-            
-        # Validar ruta de avatar para evitar errores
-        avatar_otro_valido = foto_otro if (foto_otro and os.path.exists(foto_otro)) else None
-    from chat import chat as chat_v2
-    chat_v2(usuario_id)
-
-    conn.close()
+from chat import chat # Import the chat function directly
 
 # ------------------ PREMIUM ------------------
 def premium(usuario_id):
@@ -363,53 +340,60 @@ if "usuario_id" not in st.session_state:
     elif st.session_state.auth_mode == "Forgot_Password":
         forgot_password()
 else:
-    st.sidebar.title("Navegación")
-    st.sidebar.info("ℹ Dele ahí para ver el menú")
-   
-    
-    # Notificación de "Miradas" (Likes recibidos) en la barra lateral
+    # --- LÓGICA DE DATOS PARA EL NAVBAR ---
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
     c.execute("SELECT count(*) FROM likes WHERE liked_id=?", (st.session_state["usuario_id"],))
     num_likes = c.fetchone()[0]
     conn.close()
-    if num_likes > 0:
-        st.sidebar.info(f"**{num_likes} personas** te han mirado.")
     
-    # Control de navegación por estado para permitir redirecciones
+    # --- NAVEGACIÓN EN LA BARRA LATERAL (SIDEBAR) ---
     if "menu_actual" not in st.session_state:
-        st.session_state["menu_actual"] = "Perfil" # Por defecto ir a perfil primero
+        # Verificar si el perfil está completo para decidir la página de aterrizaje
+        conn = sqlite3.connect("tevi.db")
+        c = conn.cursor()
+        c.execute("SELECT facultad FROM usuarios WHERE id=?", (st.session_state["usuario_id"],))
+        res_perfil = c.fetchone()
+        conn.close()
+
+        # Si la facultad está vacía, es su primera vez o no ha terminado su perfil
+        if res_perfil and not res_perfil[0]:
+            st.session_state["menu_actual"] = "Perfil"
+        else:
+            st.session_state["menu_actual"] = "Perfiles" # "Perfiles" es la vista de Descubrir
+
+    with st.sidebar:
+        st.image("img\logo_sinfondo.png", use_container_width=True)
+        st.markdown(f"### ❤️ Likes: {num_likes}")
+        st.markdown("---")
+        
+        if st.button(" Inicio", use_container_width=True):
+            st.session_state.menu_actual = "Inicio"
+        if st.button(" Mi Perfil", use_container_width=True):
+            st.session_state.menu_actual = "Perfil"
+        if st.button(" Descubrir", use_container_width=True):
+            st.session_state.menu_actual = "Perfiles"
+        if st.button(" Chat", use_container_width=True):
+            st.session_state.menu_actual = "Chat"
+        if st.button(" Premium", use_container_width=True):
+            st.session_state.menu_actual = "Premium"
+        
+        st.markdown("---")
+        if st.button(" Cerrar Sesión", use_container_width=True):
+            st.session_state.confirmar_logout = True
+        if st.button(" Eliminar Cuenta", use_container_width=True):
+            st.session_state.confirmar_borrado = True
+
+    # --- LÓGICA DE MODALES DE CONFIRMACIÓN ---
     
-    # Menú de navegación con botones (sin puntos de selección)
-    if st.sidebar.button("Inicio"):
-        st.session_state["menu_actual"] = "Inicio"
-    if st.sidebar.button("Mi Perfil"):
-        st.session_state["menu_actual"] = "Perfil"
-    if st.sidebar.button("Perfiles"):
-        st.session_state["menu_actual"] = "Perfiles"
-    if st.sidebar.button("Chat"):
-        st.session_state["menu_actual"] = "Chat"
-    if st.sidebar.button("Premium"):
-        st.session_state["menu_actual"] = "Premium"
-    
-    st.sidebar.markdown("---")
-    # Lógica de confirmación de Logout
     if "confirmar_logout" not in st.session_state:
         st.session_state["confirmar_logout"] = False
     if "confirmar_borrado" not in st.session_state:
         st.session_state["confirmar_borrado"] = False
 
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state["confirmar_logout"] = True
-        st.rerun()
-
-    if st.sidebar.button("Borrar Cuenta"):
-        st.session_state["confirmar_borrado"] = True
-        st.rerun()
-
     if st.session_state["confirmar_logout"]:
-        st.sidebar.warning("¿Estás seguro de salir?")
-        col_si, col_no = st.sidebar.columns(2)
+        st.warning("¿Estás seguro de salir?")
+        col_si, col_no = st.columns(2)
         if col_si.button("Sí"):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
@@ -419,13 +403,13 @@ else:
             st.rerun()
 
     if st.session_state["confirmar_borrado"]:
-        st.sidebar.error("⚠️ ¿ELIMINAR CUENTA? Esto borrará tus matches y mensajes permanentemente.")
-        col_si_b, col_no_b = st.sidebar.columns(2)
+        st.error("⚠️ ¿ELIMINAR CUENTA? Esto borrará tus matches y mensajes permanentemente.")
+        col_si_b, col_no_b = st.columns(2)
         if col_si_b.button("Sí, borrar todo", key="del_acc_yes"):
             uid = st.session_state["usuario_id"]
             conn = sqlite3.connect("tevi.db")
             c = conn.cursor()
-            # Limpieza profunda de datos relacionados para no dejar rastro
+            # Limpieza profunda de datos
             c.execute("DELETE FROM mensajes WHERE match_id IN (SELECT id FROM matches WHERE usuario1_id=? OR usuario2_id=?)", (uid, uid))
             c.execute("DELETE FROM matches WHERE usuario1_id=? OR usuario2_id=?", (uid, uid))
             c.execute("DELETE FROM likes WHERE usuario_id=? OR liked_id=?", (uid, uid))
@@ -434,8 +418,6 @@ else:
             c.execute("DELETE FROM usuarios WHERE id=?", (uid,))
             conn.commit()
             conn.close()
-            
-            # Limpiar sesión y redirigir al registro
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()

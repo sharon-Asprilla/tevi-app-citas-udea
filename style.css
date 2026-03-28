@@ -8,14 +8,8 @@ html, body, [class*="css"] {
 
 /* Fondo de la aplicación principal */
 [data-testid="stAppViewContainer"] {
-    background-color: #121212;
+    background-color: #000000;
     color: #e0e0e0;
-}
-
-/* Fondo de la barra lateral */
-[data-testid="stSidebar"] {
-    background-color: #1E1E1E;
-    border-right: 1px solid #333;
 }
 
 /* Títulos */
@@ -54,49 +48,16 @@ div.stButton > button {
     padding: 0.6rem 1.2rem;
     transition: all 0.3s ease-in-out;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
-    width: 100%; /* Ocupar ancho del contenedor */
+    width: 100%;
 }
 
-div.stButton > button:hover {
-    background-color: #FF6B6B; /* Rojo Claro al pasar mouse */
-    transform: scale(1.02);
-    box-shadow: 0px 6px 12px rgba(220, 20, 60, 0.4);
-    color: white;
+/* Mostrar el Sidebar y ajustar su estilo */
+[data-testid="stSidebar"] {
+    background-color: #111111;
 }
 
-div.stButton > button:active {
-    transform: scale(0.98);
-}
-
-/* Ajustes de espaciado del contenedor principal */
-.block-container {
-    padding-top: 3rem;
-    padding-bottom: 3rem;
-}
-
-/* --- INTERFAZ ESTILO MESSENGER --- */
-/* Burbuja del Usuario (Tú) - Naranja con texto negro */
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-    background-color: #FF8C00 !important; 
-    border-radius: 20px 20px 4px 20px !important;
-    color: #000000 !important;
-    margin-left: auto;
-    flex-direction: row-reverse !important;
-    width: fit-content;
-    max-width: 85%;
-}
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
-    color: #000000 !important;
-}
-
-/* Burbuja del Asistente (La otra persona) - Gris claro */
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-    background-color: #E1E1E1 !important;
-    border-radius: 20px 20px 20px 4px !important;
-    color: #000000 !important;
-    width: fit-content;
-    max-width: 85%;
-}
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) p {
-    color: #000000 !important;
+/* Espacio base para el contenido */
+.main .block-container {
+    padding-top: 2rem !important;
+    max-width: 1000px;
 }

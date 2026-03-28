@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import os
+from datetime import datetime
 
 def chat(usuario_id):
     
@@ -75,7 +76,7 @@ def chat(usuario_id):
         # Cabecera con botón volver
         h_col1, h_col2 = st.columns([1, 6])
         with h_col1:
-            if st.button("⬅️"):
+            if st.button("⬅️", key="back_top"):
                 st.session_state.chat_activo = None
                 st.rerun()
         with h_col2:
@@ -86,24 +87,45 @@ def chat(usuario_id):
             st.warning("🔔 **¡Te toca responder!** No dejes en visto a " + nombre_otro)
 
         # Área de mensajes
-        c.execute("SELECT remitente_id, mensaje, strftime('%H:%M', timestamp) FROM mensajes WHERE match_id=? ORDER BY timestamp ASC", (m_id,))
-        for r_id, texto, t_hora in c.fetchall():
+        # Fetch full timestamp for date separation
+        c.execute("SELECT remitente_id, mensaje, timestamp FROM mensajes WHERE match_id=? ORDER BY timestamp ASC", (m_id,))
+        messages_data = c.fetchall()
+
+        last_displayed_date = None
+        month_names_es = [
+            "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ]
+
+        for r_id, texto, full_timestamp in messages_data:
+            message_datetime = datetime.strptime(full_timestamp, "%Y-%m-%d %H:%M:%S")
+            message_date = message_datetime.date()
+            message_time = message_datetime.strftime("%H:%M")
+
+            if message_date != last_displayed_date:
+                formatted_date = f"<div style='text-align: center; color: gray; margin: 15px 0; font-size: 0.9em;'>--- {message_date.day} de {month_names_es[message_date.month]} de {message_date.year} ---</div>"
+                st.markdown(formatted_date, unsafe_allow_html=True)
+                last_displayed_date = message_date
+
             soy_yo = (r_id == usuario_id)
             with st.chat_message("user" if soy_yo else "assistant", avatar=avatar_mio if soy_yo else avatar_otro):
                 st.write(texto)
-                st.caption(t_hora)
+                st.caption(message_time) # Display only time here
         
-        # Espaciador para que el input no tape mensajes
-        st.write("<br><br><br>", unsafe_allow_html=True)
-
-        # Input estilo Messenger (Streamlit chat_input ya tiene el avión de papel ✈️)
-        nuevo_msg = st.chat_input(f"Escribe un mensaje a {nombre_otro}...")
-        
-        # Barra de utilidades (Emoji simulado)
-        col_emo, _ = st.columns([1, 10])
+        # Barra de utilidades inferior (Botón volver y Emoji)
+        # Se coloca antes del input para que aparezca justo encima de la caja de texto
+        st.write("---")
+        col_back, col_emo, _ = st.columns([1, 1, 8])
+        with col_back:
+            if st.button("⬅️", key="back_bottom", help="Volver a la lista de chats"):
+                st.session_state.chat_activo = None
+                st.rerun()
         with col_emo:
             if st.button("😊"):
                 st.toast("Usa el teclado de tu celular para emojis 📱")
+
+        # Input estilo Messenger (Streamlit chat_input ya tiene el avión de papel ✈️)
+        nuevo_msg = st.chat_input(f"Escribe un mensaje a {nombre_otro}...")
 
         if nuevo_msg:
             c.execute("INSERT INTO mensajes (match_id, remitente_id, mensaje) VALUES (?,?,?)", (m_id, usuario_id, nuevo_msg))
