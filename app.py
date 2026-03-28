@@ -3,6 +3,10 @@ import sqlite3
 import bcrypt
 import os
 from email_validator import validate_email, EmailNotValidError
+import os
+
+ruta = os.path.join("img", "logo_sinfondo.png")
+st.image(ruta)
 
 #logo en el navegador 
 
