@@ -5,7 +5,23 @@ def ver_perfiles(usuario_id):
     st.title("👀 Quién me miró")
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
-    c.execute("SELECT id, facultad FROM usuarios WHERE id!=?", (usuario_id,))
+
+    # Obtener preferencia del usuario actual
+    c.execute("SELECT preferencia FROM usuarios WHERE id=?", (usuario_id,))
+    res = c.fetchone()
+    pref = res[0] if res else "Hombres"
+    
+    # Mapear preferencia al sexo buscado en la DB
+    sexo_buscado = "Masculino" if pref == "Hombres" else "Femenino"
+
+    # Filtrar perfiles por sexo y excluir a los que ya se les dio like/dislike
+    c.execute("""SELECT id, facultad FROM usuarios 
+                 WHERE id != ? 
+                 AND sexo = ?
+                 AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id = ?)
+                 AND id NOT IN (SELECT disliked_id FROM dislikes WHERE usuario_id = ?)""", 
+              (usuario_id, sexo_buscado, usuario_id, usuario_id))
+    
     perfiles = c.fetchall()
     conn.close()
 

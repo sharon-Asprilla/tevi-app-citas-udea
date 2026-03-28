@@ -16,7 +16,9 @@ def init_db():
         intereses TEXT,
         foto TEXT,
         ubicacion TEXT,
-        premium INTEGER DEFAULT 0
+        premium INTEGER DEFAULT 0,
+        sexo TEXT,
+        preferencia TEXT
     )
     """)
 

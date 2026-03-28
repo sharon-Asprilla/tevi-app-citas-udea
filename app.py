@@ -6,20 +6,12 @@ from email_validator import validate_email, EmailNotValidError
 
 #logo en el navegador 
 
-
 st.set_page_config(
-    page_title="Tevi",
-    page_icon="img\logo_sinfondo.png"
+    page_title="TeVi 👀",
+    page_icon="img/logo_sinfondo.png",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-
-
-
-
-
-
-
-
-st.set_page_config(page_title="tevi")
 
 st.markdown("""
 <link rel="manifest" href="/static/manifest.json">
@@ -31,14 +23,6 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 """, unsafe_allow_html=True)
-
-
-
-
-# --- CONFIGURACIÓN DE PÁGINA (Debe ser lo primero) ---
-st.set_page_config(page_title="TeVi 👀", layout="wide", initial_sidebar_state="expanded")
-
-
 
 def local_css(file_name):
     with open(file_name) as f:
@@ -67,7 +51,9 @@ def init_db():
         intereses TEXT,
         foto TEXT,
         ubicacion TEXT,
-        premium INTEGER DEFAULT 0
+        premium INTEGER DEFAULT 0,
+        sexo TEXT,
+        preferencia TEXT
     )""")
 
     # Migración segura: Verificar si columnas nuevas existen para evitar errores
@@ -75,6 +61,16 @@ def init_db():
         c.execute("ALTER TABLE usuarios ADD COLUMN foto TEXT")
     except sqlite3.OperationalError:
         pass 
+
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN sexo TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN preferencia TEXT")
+    except sqlite3.OperationalError:
+        pass
 
     c.execute("""CREATE TABLE IF NOT EXISTS likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -127,7 +123,7 @@ def perfil(usuario_id):
     
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
-    c.execute("SELECT facultad, carrera, edad, intereses, ubicacion, foto FROM usuarios WHERE id=?", (usuario_id,))
+    c.execute("SELECT facultad, carrera, edad, intereses, ubicacion, foto, sexo, preferencia FROM usuarios WHERE id=?", (usuario_id,))
     datos = c.fetchone()
     conn.close()
 
@@ -138,6 +134,8 @@ def perfil(usuario_id):
     int_val = datos[3] if datos and datos[3] else ""
     ubi_val = datos[4] if datos and datos[4] else ""
     foto_actual = datos[5] if datos and datos[5] else None
+    sexo_val = datos[6] if datos and datos[6] else "Femenino"
+    pref_val = datos[7] if datos and datos[7] else "Hombres"
 
     # Variable para controlar la ubicación en el formulario
     if "temp_ubicacion" not in st.session_state:
@@ -150,6 +148,10 @@ def perfil(usuario_id):
         with col1:
             facultad = st.text_input("Facultad", value=fac_val)
             edad = st.number_input("Edad", 16, 99, value=edad_val)
+            sexo = st.selectbox("Sexo", ["Femenino", "Masculino", "Otro"], 
+                                index=["Femenino", "Masculino", "Otro"].index(sexo_val) if sexo_val in ["Femenino", "Masculino", "Otro"] else 0)
+            preferencia = st.selectbox("Preferencia sexual", ["Hombres", "Mujeres"], 
+                                        index=["Hombres", "Mujeres"].index(pref_val) if pref_val in ["Hombres", "Mujeres"] else 0)
             
             # Sección de Ubicación Automática
             st.markdown("---")
@@ -201,8 +203,8 @@ def perfil(usuario_id):
                     f.write(foto.getbuffer())
                 nombre_foto = file_path
 
-            c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=? WHERE id=?""",
-                    (facultad, carrera, edad, intereses, ubicacion, nombre_foto, usuario_id))
+            c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=?, sexo=?, preferencia=? WHERE id=?""",
+                    (facultad, carrera, edad, intereses, ubicacion, nombre_foto, sexo, preferencia, usuario_id))
             conn.commit()
             conn.close()
             st.session_state["menu_actual"] = "Perfiles"
@@ -213,12 +215,21 @@ def ver_perfiles(usuario_id):
     st.title("👀 Quién me miró")
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
-    # Seleccionamos más datos para mostrar una tarjeta atractiva
+
+    # Obtener preferencia del usuario actual para filtrar
+    c.execute("SELECT preferencia FROM usuarios WHERE id=?", (usuario_id,))
+    pref_res = c.fetchone()
+    preferencia_usuario = pref_res[0] if pref_res else "Hombres"
+    
+    # Mapeo de preferencia a sexo en la base de datos
+    sexo_buscado = "Masculino" if preferencia_usuario == "Hombres" else "Femenino"
+
     c.execute("""SELECT id, facultad, carrera, intereses, edad, foto, correo FROM usuarios 
                  WHERE id!=? 
+                 AND sexo=?
                  AND id NOT IN (SELECT liked_id FROM likes WHERE usuario_id=?)
                  AND id NOT IN (SELECT disliked_id FROM dislikes WHERE usuario_id=?)""", 
-                 (usuario_id, usuario_id, usuario_id))
+                 (usuario_id, sexo_buscado, usuario_id, usuario_id))
     perfiles = c.fetchall()
     conn.close()
 
