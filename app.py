@@ -42,7 +42,7 @@ hide_streamlit_style = """
     <style>
     #MainMenu {visibility: hidden;}     /* Oculta el menú de hamburguesa */
     footer {visibility: hidden;}        /* Oculta el pie de página */
-    header {visibility: hidden;}        /* Oculta la barra superior */
+  
 
     /* Hace que el botón para abrir/cerrar el menú sea visible y blanco */
     [data-testid="stSidebarCollapseButton"] {
