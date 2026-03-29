@@ -7,7 +7,7 @@ def perfil(usuario_id):
    
     conn = sqlite3.connect("tevi.db")
     c = conn.cursor()
-    c.execute("SELECT facultad, carrera, edad, intereses, sexo, preferencia, ubicacion FROM usuarios WHERE id=?", (usuario_id,))
+    c.execute("SELECT facultad, carrera, edad, intereses, sexo, orientacion, ubicacion FROM usuarios WHERE id=?", (usuario_id,))
     datos = c.fetchone()
     conn.close()
 
@@ -17,10 +17,11 @@ def perfil(usuario_id):
     intereses = st.text_area("Intereses", value=datos[3] if datos and datos[3] else "")
     
     sexo_val = datos[4] if datos and datos[4] else "Femenino"
-    pref_val = datos[5] if datos and datos[5] else "Hombres"
+    orient_val = datos[5] if datos and datos[5] else "Heterosexual"
     
     sexo = st.selectbox("Sexo", ["Femenino", "Masculino", "Otro"], index=["Femenino", "Masculino", "Otro"].index(sexo_val) if sexo_val in ["Femenino", "Masculino", "Otro"] else 0)
-    preferencia = st.selectbox("Preferencia sexual", ["Hombres", "Mujeres"], index=["Hombres", "Mujeres"].index(pref_val) if pref_val in ["Hombres", "Mujeres"] else 0)
+    orientaciones = ["Heterosexual", "Homosexual", "Bisexual", "Pansexual", "Demisexual", "Asexual"]
+    orientacion = st.selectbox("Orientación Sexual", orientaciones, index=orientaciones.index(orient_val) if orient_val in orientaciones else 0)
     
     ubicacion = st.text_input("Ubicación (simulada)", value=datos[6] if datos and datos[6] else "")
     foto = st.file_uploader("Subir foto", type=["jpg","png"])
@@ -28,8 +29,8 @@ def perfil(usuario_id):
     if st.button("Guardar perfil"):
         conn = sqlite3.connect("tevi.db")
         c = conn.cursor()
-        c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=?, sexo=?, preferencia=? WHERE id=?""",
-                  (facultad, carrera, edad, intereses, ubicacion, foto.name if foto else None, sexo, preferencia, usuario_id))
+        c.execute("""UPDATE usuarios SET facultad=?, carrera=?, edad=?, intereses=?, ubicacion=?, foto=?, sexo=?, orientacion=? WHERE id=?""",
+                  (facultad, carrera, edad, intereses, ubicacion, foto.name if foto else None, sexo, orientacion, usuario_id))
         conn.commit()
         conn.close()
         st.session_state["menu_actual"] = "Perfiles"

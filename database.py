@@ -18,7 +18,8 @@ def init_db():
         ubicacion TEXT,
         premium INTEGER DEFAULT 0,
         sexo TEXT,
-        preferencia TEXT
+        preferencia TEXT,
+        orientacion TEXT
     )
     """)
 
