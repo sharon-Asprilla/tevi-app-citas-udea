@@ -36,6 +36,7 @@ def local_css(file_name):
 # Cargar estilos
 local_css("style.css")
 
+st.info("""recuerda que las fechas >> son el menu deplegable""")
 
 # CSS para ocultar elementos por defecto
 hide_streamlit_style = """
@@ -541,14 +542,14 @@ else:
         st.markdown("""
         ### ¿Has visto a alguien en la U y no sabes cómo hablarle?
         Todos hemos tenido ese **crush** que vemos a diario en la biblioteca, en la cafetería o cruzando el campus, pero a veces los nervios nos ganan y no sabemos cómo acercarnos. **TeVi** nace para que esos encuentros de pasillo se conviertan en algo más.
-                    además tiene incorporado ladiversidad de genero y orientacion sexual asi identificas si le gustas a alguien y si tiene la orientacion sexual que  quieres
+        además tiene incorporado ladiversidad de genero y orientacion sexual asi identificas si le gustas a alguien y si tiene la orientacion sexual que  quieres
 
-                    TeVi se creo con autenticidad y creatividad donde todos podemos ser felices y disfrutar de esta comunidad  sinlimites
+        TeVi se creo con autenticidad y creatividad donde todos podemos ser felices y disfrutar de esta comunidad  sin limites
 
-                    recuerda que puedes bloquear y reportar si hay simbolo de acoso "es muy importante que pongas tus limites"
+        recuerda que puedes bloquear y reportar si hay simbolo de acoso "es muy importante que pongas tus limites"
 
-                    cualquier persona que intente usar esta app web conotras intenciones maliciosas se le sera bloqueado el acceso ala pagina
-                    y no podria volver a registrar nunca mas el correo, sean respetuosos y concientes 
+        cualquier persona que intente usar esta app web con otras intenciones "maliciosas" se le sera bloqueado el acceso ala pagina
+        y no podria volver a registrar nunca mas el correo, sean respetuosos y concientes 
 
                 
 
