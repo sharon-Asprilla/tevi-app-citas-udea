@@ -462,11 +462,15 @@ else:
     with st.sidebar:
         ruta = os.path.join("img", "logo_sinfondo.png")
         st.image(ruta)
+        st.text("aqui se estara contando cuantos likes, asi no hagas match")
         st.markdown(f"### ❤️ Likes: {num_likes}")
         st.markdown("---")
 
+
+        st.info("aqui se pondra si se actualiza la aplicacion, cuando y a que horas podras usarla")
+        st.text("aqui")
     
-        
+        st.text("menu")
         if st.button(" Inicio", use_container_width=True):
             st.session_state.menu_actual = "Inicio"
         if st.button(" Mi Perfil", use_container_width=True):
@@ -485,6 +489,7 @@ else:
             st.session_state.confirmar_logout = True
         if st.button(" Eliminar Cuenta", use_container_width=True):
             st.session_state.confirmar_borrado = True
+       
 
     # --- LÓGICA DE MODALES DE CONFIRMACIÓN ---
     
@@ -538,6 +543,10 @@ else:
     elif st.session_state["menu_actual"] == "Reseñas":
         resenas_page(st.session_state["usuario_id"])
     else:
+        st.info("se estara actualizando y dando mejoras dependiendo de las reseñas" \
+        "y gustos del creador, ademas se le estara avisando cuando esta en mantenimiento y revision," \
+        " cuando este en configuracion no podras usar la app web en 3 horas, chic@s espero que disfruten al maximo " \
+        " y recuerden las sanciones que hay(spam,acoso,suplantacion de identidad,palabras inadecuadas)")
         st.title(" ¡Bienvenido a TeVi!")
         st.markdown("""
         ### ¿Has visto a alguien en la U y no sabes cómo hablarle?
