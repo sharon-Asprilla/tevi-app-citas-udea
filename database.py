@@ -94,5 +94,17 @@ def init_db():
     )
     """)
 
+    # Tabla de reseñas
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS resenas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        comentario TEXT,
+        calificacion INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    )
+    """)
+
     conn.commit()
     conn.close()

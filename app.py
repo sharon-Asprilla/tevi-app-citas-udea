@@ -55,8 +55,9 @@ if st.button("creadora"):
     st.info("""
     **Desarrolladora:** Sharon Asprilla  
     **GitHub:** [sharon-Asprilla](https://github.com/sharon-Asprilla)  
-    Aquí puedes ver más proyectos que he creado.
-    """)
+    Aquí puedes ver más proyectos que ha creado, dar click para mas información.
+    """, icon="ℹ️")
+    
 
 
 
@@ -156,6 +157,15 @@ def init_db():
         usuario_id INTEGER,
         monto INTEGER,
         fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS resenas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER,
+        comentario TEXT,
+        calificacion INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
     )""")
 
     conn.commit()
@@ -392,6 +402,7 @@ def ver_perfiles(usuario_id):
 
 # ------------------ CHAT ------------------
 from chat import chat # Import the chat function directly
+from reviews import resenas_page
 
 # ------------------ PREMIUM ------------------
 def premium(usuario_id):
@@ -456,6 +467,8 @@ else:
             st.session_state.menu_actual = "Chat"
         if st.button(" Premium", use_container_width=True):
             st.session_state.menu_actual = "Premium"
+        if st.button(" ⭐ Reseñas", use_container_width=True):
+            st.session_state.menu_actual = "Reseñas"
         
         st.markdown("---")
         if st.button(" Cerrar Sesión", use_container_width=True):
@@ -512,6 +525,8 @@ else:
         chat(st.session_state["usuario_id"])
     elif st.session_state["menu_actual"] == "Premium":
         premium(st.session_state["usuario_id"])
+    elif st.session_state["menu_actual"] == "Reseñas":
+        resenas_page(st.session_state["usuario_id"])
     else:
         st.title(" ¡Bienvenido a TeVi!")
         st.markdown("""
